@@ -154,7 +154,7 @@ if __name__ == "__main__":
             d_utils.PointcloudJitter(),
         ]
     )
-    dset = ModelNet40Cls(16, train=True, transforms=transforms)
+    dset = ModelNet40Cls(4096, train=True, transforms=transforms)
     print(dset[0])
     print(len(dset))
     dloader = torch.utils.data.DataLoader(dset, batch_size=32, shuffle=True)

@@ -15,6 +15,8 @@ class PointNet2SemSegMSG(nn.Module):
 
         use_xyz: bool = True
             Whether or not to use the xyz position of a point as a feature
+
+        Note: modify npoint and radii to fit different data.
     """
     def __init__(self, in_channels, out_channels, use_xyz=True):
         super().__init__()
