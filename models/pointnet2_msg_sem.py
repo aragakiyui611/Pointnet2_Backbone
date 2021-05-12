@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from pointnet2_ops.pointnet2_modules import PointnetFPModule, PointnetSAModuleMSG, PointnetSAModule
+from pointnet2_ops.pointnet2_modules import PointnetFPModule, PointnetSAModuleMSG
 
 class PointNet2SemSegMSG(nn.Module):
     r"""Parameters
@@ -18,11 +18,12 @@ class PointNet2SemSegMSG(nn.Module):
 
         Note: modify npoint and radii to fit different data.
     """
-    def __init__(self, in_channels, out_channels, use_xyz=True):
+    def __init__(self, in_channels, out_channels, use_xyz=True, as_backbone=True):
         super().__init__()
         self.in_channels = in_channels
-        self.use_xyz = use_xyz
         self.out_channels = out_channels
+        self.use_xyz = use_xyz
+        self.as_backbone = as_backbone
         self._build_model()
 
     def _build_model(self):
@@ -81,13 +82,14 @@ class PointNet2SemSegMSG(nn.Module):
         self.FP_modules.append(PointnetFPModule(mlp=[512 + c_out_1, 512, 512]))
         self.FP_modules.append(PointnetFPModule(mlp=[c_out_3 + c_out_2, 512, 512]))
 
-        self.fc_layer = nn.Sequential(
-            nn.Conv1d(128, 128, kernel_size=1, bias=False),
-            nn.BatchNorm1d(num_features=128),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.5),
-            nn.Conv1d(128, self.out_channels, kernel_size=1)
-        )
+        if not self.as_backbone:
+            self.fc_layer = nn.Sequential(
+                nn.Conv1d(128, 128, kernel_size=1, bias=False),
+                nn.BatchNorm1d(num_features=128),
+                nn.ReLU(inplace=True),
+                nn.Dropout(0.5),
+                nn.Conv1d(128, self.out_channels, kernel_size=1)
+            )
 
     def _break_up_pc(self, pc):
         xyz = pc[..., 0:3].contiguous()
@@ -106,6 +108,7 @@ class PointNet2SemSegMSG(nn.Module):
                 Point cloud to run predicts on
                 Each point in the point-cloud MUST
                 be formated as (x, y, z, features...)
+            returns: if as_backbone, out_channel=128.
         """
         xyz, features = self._break_up_pc(pointcloud)
 
@@ -122,6 +125,9 @@ class PointNet2SemSegMSG(nn.Module):
 
         features = l_features[0]
 
-        network_output = self.fc_layer(features)
+        if not self.as_backbone:
+            network_output = self.fc_layer(features)
+        else:
+            network_output = features
 
         return network_output
