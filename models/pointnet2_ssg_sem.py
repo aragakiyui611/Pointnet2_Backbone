@@ -16,12 +16,15 @@ class PointNet2SemSegSSG(nn.Module):
 
         use_xyz: bool = True
             Whether or not to use the xyz position of a point as a feature
+
+        Note: modify npoint and radii to fit different data.
     """
-    def __init__(self, in_channels, out_channels, use_xyz=True):
+    def __init__(self, in_channels, out_channels, use_xyz=True, as_backbone=True):
         super().__init__()
         self.in_channels = in_channels
-        self.use_xyz = use_xyz
         self.out_channels = out_channels
+        self.use_xyz = use_xyz
+        self.as_backbone = as_backbone
         self._build_model()
 
     def _build_model(self):
@@ -69,13 +72,14 @@ class PointNet2SemSegSSG(nn.Module):
         self.FP_modules.append(PointnetFPModule(mlp=[256 + 128, 256, 256]))
         self.FP_modules.append(PointnetFPModule(mlp=[512 + 256, 256, 256]))
 
-        self.fc_layer = nn.Sequential(
-            nn.Conv1d(128, 128, kernel_size=1, bias=False),
-            nn.BatchNorm1d(128),
-            nn.ReLU(inplace=True),
-            nn.Dropout(0.5),
-            nn.Conv1d(128, self.out_channels, kernel_size=1),
-        )
+        if not self.as_backbone:
+            self.fc_layer = nn.Sequential(
+                nn.Conv1d(128, 128, kernel_size=1, bias=False),
+                nn.BatchNorm1d(128),
+                nn.ReLU(inplace=True),
+                nn.Dropout(0.5),
+                nn.Conv1d(128, self.out_channels, kernel_size=1),
+            )
 
     def _break_up_pc(self, pc):
         xyz = pc[..., 0:3].contiguous()
@@ -94,6 +98,7 @@ class PointNet2SemSegSSG(nn.Module):
                 Point cloud to run predicts on
                 Each point in the point-cloud MUST
                 be formated as (x, y, z, features...)
+                returns: if as_backbone, out_channel=128.
         """
         xyz, features = self._break_up_pc(pointcloud)
 
@@ -110,6 +115,9 @@ class PointNet2SemSegSSG(nn.Module):
 
         features = l_features[0]
 
-        network_output = self.fc_layer(features)
+        if not self.as_backbone:
+            network_output = self.fc_layer(features)
+        else:
+            network_output = features
 
         return network_output

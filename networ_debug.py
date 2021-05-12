@@ -8,7 +8,7 @@ import torch
 pc = torch.ones(10,100,9).cuda()*1.0
 net1 = modelcls(6,40,True).cuda()
 net2 = modelsem(6,40,True).cuda()
-net3 = modelmsgcls(6,40,True).cuda()
+net3 = modelmsgcls(6,40,True,True).cuda()
 net4 = modelmsgsem(in_channels=6,out_channels=40,use_xyz=True, as_backbone=True).cuda()
 
 z =net1(pc)
